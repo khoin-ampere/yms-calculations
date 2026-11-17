@@ -169,3 +169,39 @@ def test_yms06_calculates_test_time_for_filtered_records(die_data, die_commits) 
     assert result.start_date.strftime("%Y-%m-%dT%H:%M:%SZ") == "2026-10-01T00:00:00Z"
     assert result.frame.loc[0, "volume"] == 1
     assert result.frame.loc[0, "test_time"] == pytest.approx(10)
+
+
+def test_yms06_transform_rejects_incomplete_input_and_keeps_latest_lot_week(die_data) -> None:
+    raw = die_data.assign(facility_id="F1", handler_id="H1")
+    raw.loc[1, "wafer_end_time"] = "2026-10-08T10:00:00Z"
+    processed = yms06.process_raw_die_data(raw)
+
+    assert len(processed) == 3
+    assert set(processed["facility"]) == {"F1"}
+    assert processed["work_week"].nunique() == 1
+    with pytest.raises(ValueError, match="missing required columns"):
+        yms06.process_raw_die_data(raw.drop(columns="die_id"))
+
+
+def test_yms06_combines_step_metrics_and_unique_wafer_counts(die_data) -> None:
+    data = yms06.process_raw_die_data(die_data.assign(facility_id="F1", handler_id="H1"))
+    cp2 = data.iloc[[0]].copy()
+    cp2["process_step"] = "CP2"
+    combined_input = pd.concat([data, cp2], ignore_index=True)
+    commits = pd.DataFrame(
+        [
+            {"product_family": "P1", "process_step": "CP1", "commit_test_time": 12.0, "good_test_time": 9.0, "trigger_limit_test_time": 18.0},
+            {"product_family": "P1", "process_step": "CP2", "commit_test_time": 8.0, "good_test_time": 5.0, "trigger_limit_test_time": 12.0},
+        ]
+    )
+
+    summary = yms06.create_summary(
+        combined_input,
+        commits,
+        ["product_family", "process_step"],
+        process_step_combination=["CP1", "CP2"],
+    )
+    row = summary.loc[summary["process_step"].eq("CP1, CP2")].iloc[0]
+
+    assert row["volume"] == 4
+    assert row["no_wafers"] == 1
