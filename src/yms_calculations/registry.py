@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from types import ModuleType
 
-from . import yms03, yms04, yms05
+from . import yms03, yms04, yms05, yms06
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,7 @@ REPORT_REGISTRY = {
     "yms03": ReportDefinition("yms03", yms03),
     "yms04": ReportDefinition("yms04", yms04),
     "yms05": ReportDefinition("yms05", yms05),
+    "yms06": ReportDefinition("yms06", yms06),
 }
 
 

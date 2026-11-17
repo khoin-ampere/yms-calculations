@@ -7,11 +7,11 @@ import pandas as pd
 import pytest
 
 from yms_calculations import get_report
-from yms_calculations import registry, yms03, yms04, yms05
+from yms_calculations import registry, yms03, yms04, yms05, yms06
 
 
 def test_registry_exposes_supported_reports() -> None:
-    assert set(registry.REPORT_REGISTRY) == {"yms03", "yms04", "yms05"}
+    assert set(registry.REPORT_REGISTRY) == {"yms03", "yms04", "yms05", "yms06"}
     assert get_report("yms04").calculate is yms04.calculate
     with pytest.raises(ValueError, match="Unknown YMS report"):
         get_report("unknown")
@@ -153,3 +153,19 @@ def test_yms03_parses_lot_filters_by_lot_and_uses_latest_week() -> None:
 
     assert result.frame.loc[0, "lot"] == "A"
     assert result.frame.loc[0, "volume"] == 2
+
+
+def test_yms06_calculates_test_time_for_filtered_records(die_data, die_commits) -> None:
+    processed = yms06.process_raw_die_data(die_data.assign(facility_id="F1", handler_id="H1"))
+    result = yms06.calculate(
+        processed,
+        die_commits,
+        {
+            "start_date": "2026-10-01T00:00:00Z",
+            "end_date": "2026-10-02T00:00:00Z",
+            "hbin": [1],
+        },
+    )
+    assert result.start_date.strftime("%Y-%m-%dT%H:%M:%SZ") == "2026-10-01T00:00:00Z"
+    assert result.frame.loc[0, "volume"] == 1
+    assert result.frame.loc[0, "test_time"] == pytest.approx(10)
