@@ -14,7 +14,7 @@ from typing import Literal
 import pandas as pd
 
 
-FilterValueKind = Literal["string", "number", "datetime"]
+FilterValueKind = Literal["string", "number", "datetime", "boolean"]
 
 
 class ReportValidationError(ValueError):
@@ -60,6 +60,14 @@ class ColumnSpec:
 
 
 @dataclass(frozen=True)
+class OptionalColumnGroup:
+    """One display-only request flag and the fields it projects into a response."""
+
+    key: str
+    columns: tuple[ColumnSpec, ...]
+
+
+@dataclass(frozen=True)
 class ReportManifest:
     """Declarative, data-owned contract for one report plugin."""
 
@@ -72,6 +80,7 @@ class ReportManifest:
     group_by_columns: tuple[ColumnSpec, ...] = ()
     columns: tuple[ColumnSpec, ...] = ()
     optional_columns: tuple[str, ...] = ()
+    optional_column_groups: tuple[OptionalColumnGroup, ...] = ()
 
     @property
     def filter_keys(self) -> frozenset[str]:
@@ -90,6 +99,11 @@ class ReportManifest:
     def group_by_column_map(self) -> dict[str, ColumnSpec]:
         """Return group-by presentation metadata keyed by field name."""
         return {column.key: column for column in self.group_by_columns}
+
+    @property
+    def optional_column_group_map(self) -> dict[str, tuple[ColumnSpec, ...]]:
+        """Return display-only response fields keyed by their request flag."""
+        return {group.key: group.columns for group in self.optional_column_groups}
 
 
 @dataclass(frozen=True)
@@ -176,3 +190,5 @@ def _validate_value(spec: FilterSpec, value: object) -> None:
         raise ReportValidationError(f"{spec.key} must contain numbers.")
     if spec.value_kind == "datetime" and not isinstance(value, (str, pd.Timestamp)):
         raise ReportValidationError(f"{spec.key} must contain ISO datetime strings or pandas timestamps.")
+    if spec.value_kind == "boolean" and not isinstance(value, bool):
+        raise ReportValidationError(f"{spec.key} must be a boolean.")

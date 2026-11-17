@@ -169,6 +169,63 @@ def test_yms05_assigns_a_lot_to_its_latest_work_week(die_data, die_commits) -> N
     assert result.dynamic_metric_keys == ("HBIN1",)
 
 
+def test_yms05_manifest_owns_default_and_optional_column_contracts() -> None:
+    report = get_report("yms05")
+    manifest = report.manifest
+
+    assert [
+        (
+            column.key,
+            column.header,
+            column.format,
+            column.display_by_default,
+            column.color_type,
+            column.color_reference,
+        )
+        for column in manifest.columns
+    ] == [
+        ("product_family", "Product", "text", True, None, None),
+        ("process_step", "Process Step", "text", True, None, None),
+        ("test_temp", "Temp (C)", "number", True, None, None),
+        ("work_week", "Work Week", "number", True, None, None),
+        ("volume", "Volume", "number", True, None, None),
+        ("yield", "Yield", "percentage", True, "yield", "yield_delta"),
+        ("yield_commit", "Yield Commit", "percentage", True, None, None),
+        ("delta", "Delta", "percentage", True, None, None),
+        ("yield_delta", "Yield Delta", "percentage", False, None, None),
+    ]
+    assert manifest.optional_columns == (
+        "no_wafers",
+        "no_lots",
+        "d0",
+        "full_core_yield",
+        "first_pass_yield",
+        "retest_rate",
+        "test_time",
+        "ttg",
+    )
+    assert [
+        (key, [column.key for column in columns])
+        for key, columns in manifest.optional_column_group_map.items()
+    ] == [
+        ("no_wafers", ["no_wafers"]),
+        ("no_lots", ["no_lots"]),
+        ("d0", ["d0"]),
+        ("full_core_yield", ["full_core_yield", "commit_fc_yield", "fc_yield_delta"]),
+        ("first_pass_yield", ["first_pass_yield"]),
+        ("retest_rate", ["retest_rate"]),
+        ("test_time", ["test_time", "test_time_commit", "test_time_delta"]),
+        ("ttg", ["ttg"]),
+    ]
+
+    filters = report.normalize_filters(
+        {"hbins": [1], "no_wafers": True, "full_core_yield": False, "test_time": True}
+    )
+    assert report.calculation_filter_data(filters) == {"hbins": [1]}
+    with pytest.raises(ReportValidationError, match="must be a boolean"):
+        report.normalize_filters({"test_time": "yes"})
+
+
 def test_yms03_processes_and_filters_documented_dimension() -> None:
     now = pd.Timestamp.now(tz="UTC")
     raw = pd.DataFrame(

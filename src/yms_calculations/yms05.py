@@ -5,10 +5,27 @@ from collections.abc import Mapping
 
 import pandas as pd
 
-from .contracts import ArtifactSpec, CalculationResult, FilterSpec, ReportManifest
+from .contracts import (
+    ArtifactSpec,
+    CalculationResult,
+    ColumnSpec,
+    FilterSpec,
+    OptionalColumnGroup,
+    ReportManifest,
+)
 from . import yms04
 
 DEFAULT_SUMMARY_KEYS = ("product_family", "process_step", "test_temp", "work_week")
+OPTIONAL_COLUMN_FLAGS = (
+    "no_wafers",
+    "no_lots",
+    "d0",
+    "full_core_yield",
+    "first_pass_yield",
+    "retest_rate",
+    "test_time",
+    "ttg",
+)
 
 MANIFEST = ReportManifest(
     name="yms05",
@@ -20,8 +37,94 @@ MANIFEST = ReportManifest(
         FilterSpec("end_date", "datetime", required_with=("start_date",)),
         FilterSpec("hbins", "number", multiple=True),
         FilterSpec("sbins", "number", multiple=True),
+        *(
+            FilterSpec(key, "boolean", calculation_relevant=False)
+            for key in OPTIONAL_COLUMN_FLAGS
+        ),
     ),
     group_by_fields=("work_week",),
+    columns=(
+        ColumnSpec("product_family", "Product", "text"),
+        ColumnSpec("process_step", "Process Step", "text"),
+        ColumnSpec("test_temp", "Temp (C)", "number"),
+        ColumnSpec("work_week", "Work Week", "number"),
+        ColumnSpec("volume", "Volume", "number"),
+        ColumnSpec(
+            "yield",
+            "Yield",
+            "percentage",
+            color_type="yield",
+            color_reference="yield_delta",
+        ),
+        ColumnSpec("yield_commit", "Yield Commit", "percentage"),
+        ColumnSpec("delta", "Delta", "percentage"),
+        ColumnSpec("yield_delta", "Yield Delta", "percentage", display_by_default=False),
+    ),
+    optional_columns=OPTIONAL_COLUMN_FLAGS,
+    optional_column_groups=(
+        OptionalColumnGroup(
+            "no_wafers",
+            (ColumnSpec("no_wafers", "#wafers", "number"),),
+        ),
+        OptionalColumnGroup(
+            "no_lots",
+            (ColumnSpec("no_lots", "#lots", "number"),),
+        ),
+        OptionalColumnGroup(
+            "d0",
+            (ColumnSpec("d0", "D0", "number"),),
+        ),
+        OptionalColumnGroup(
+            "full_core_yield",
+            (
+                ColumnSpec(
+                    "full_core_yield",
+                    "Full Core Yield",
+                    "percentage",
+                    color_type="yield",
+                    color_reference="fc_yield_delta",
+                ),
+                ColumnSpec("commit_fc_yield", "FC Yield commit", "percentage"),
+                ColumnSpec(
+                    "fc_yield_delta",
+                    "Full Core Yield Delta",
+                    "percentage",
+                    display_by_default=False,
+                ),
+            ),
+        ),
+        OptionalColumnGroup(
+            "first_pass_yield",
+            (ColumnSpec("first_pass_yield", "1st Pass Yield", "percentage"),),
+        ),
+        OptionalColumnGroup(
+            "retest_rate",
+            (ColumnSpec("retest_rate", "Retest%", "percentage"),),
+        ),
+        OptionalColumnGroup(
+            "test_time",
+            (
+                ColumnSpec(
+                    "test_time",
+                    "TT (s)",
+                    "number",
+                    color_type="test_time",
+                    color_reference="test_time_delta",
+                ),
+                ColumnSpec("test_time_commit", "TT Commit", "number"),
+                ColumnSpec(
+                    "test_time_delta",
+                    "Test Time Delta",
+                    "number",
+                    display_by_default=False,
+                ),
+            ),
+        ),
+        OptionalColumnGroup(
+            "ttg",
+            (ColumnSpec("ttg", "TTG (s)", "number"),),
+        ),
+    ),
 )
 
 
