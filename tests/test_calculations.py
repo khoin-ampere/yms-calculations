@@ -64,3 +64,92 @@ def test_yms03_processes_and_filters_documented_dimension() -> None:
     commits = pd.DataFrame([{"test_stage": "FT", "product_family": "P1", "process_step": "FT1", "commit_yield": 0.8, "commit_top_bin_yield": 0.8, "commit_test_time": 4.0}])
     result = yms03.calculate(yms03.process_unit_test_data(raw), commits, {"facility": ["A"]})
     assert set(result.frame["process_step"]) == {"FT1"}
+
+def test_yms03_parses_lot_filters_by_lot_and_uses_latest_week() -> None:
+    first = pd.Timestamp("2026-09-28T00:00:00Z")
+    latest = pd.Timestamp("2026-10-08T00:00:00Z")
+    raw = pd.DataFrame(
+        [
+            {
+                "test_program": "PROD",
+                "serial_no": "s1",
+                "lot_end_time": first,
+                "unit_end_time": None,
+                "lot_start_time": None,
+                "unit_start_time": None,
+                "hbin": "1",
+                "sbin": "1",
+                "run_time": "5",
+                "test_stage": "FT",
+                "process_step": "FT1",
+                "rework_index": 1,
+                "lot_id": "PREFIX_A.1",
+                "product_family": "P1",
+                "facility_id": "F1",
+                "is_latest": 1,
+            },
+            {
+                "test_program": "PROD",
+                "serial_no": "s2",
+                "lot_end_time": latest,
+                "unit_end_time": None,
+                "lot_start_time": None,
+                "unit_start_time": None,
+                "hbin": "1",
+                "sbin": "1",
+                "run_time": "5",
+                "test_stage": "FT",
+                "process_step": "FT1",
+                "rework_index": 1,
+                "lot_id": "PREFIX_A.2",
+                "product_family": "P1",
+                "facility_id": "F1",
+                "is_latest": 1,
+            },
+            {
+                "test_program": "PROD",
+                "serial_no": "s3",
+                "lot_end_time": latest,
+                "unit_end_time": None,
+                "lot_start_time": None,
+                "unit_start_time": None,
+                "hbin": "1",
+                "sbin": "1",
+                "run_time": "5",
+                "test_stage": "FT",
+                "process_step": "FT1",
+                "rework_index": 1,
+                "lot_id": "PREFIX_B.1",
+                "product_family": "P1",
+                "facility_id": "F1",
+                "is_latest": 1,
+            },
+        ]
+    )
+
+    processed = yms03.process_unit_test_data(raw)
+    a_rows = processed.loc[processed["lot"].eq("A")]
+
+    assert set(a_rows["facility"]) == {"F1"}
+    assert a_rows["work_week"].nunique() == 1
+
+    commits = pd.DataFrame(
+        [
+            {
+                "test_stage": "FT",
+                "product_family": "P1",
+                "process_step": "FT1",
+                "commit_yield": 0.8,
+                "commit_top_bin_yield": 0.8,
+                "commit_test_time": 4.0,
+            }
+        ]
+    )
+    result = yms03.calculate(
+        processed,
+        commits,
+        {"lot": ["A"], "group_by_columns": ["lot"]},
+    )
+
+    assert result.frame.loc[0, "lot"] == "A"
+    assert result.frame.loc[0, "volume"] == 2

@@ -11,7 +11,7 @@ from .yms04 import add_dynamic_yields as add_generic_dynamic_yields
 
 EXCLUDED_TEST_PROGRAM_PATTERN = r"QK|Screen|ENG|CORR|Calibration|HTOL"
 DEFAULT_SUMMARY_KEYS = ("test_stage", "product_family", "process_step")
-REQUEST_FILTERS = ("test_program", "facility", "tester_id", "handler_id", "card_id")
+REQUEST_FILTERS = ("test_program", "facility", "tester_id", "handler_id", "card_id", "lot")
 
 
 def process_unit_test_data(dataframe: pd.DataFrame) -> pd.DataFrame:
@@ -30,8 +30,18 @@ def process_unit_test_data(dataframe: pd.DataFrame) -> pd.DataFrame:
     data["test_result"] = np.where(slt_pass | ft_pass, 1.0, 0.0)
     data["test_result_top_bin"] = np.where(data["test_result"].eq(1) & data["hbin"].eq(1) & data["sbin"].eq(1), 1.0, 0.0)
     data["retest"] = pd.to_numeric(data["rework_index"], errors="coerce").gt(1).astype(int)
-    data["lot"] = data["lot_id"].astype("string").str.split(".").str[0]
-    data["work_week"] = data["event_time"].dt.strftime("%Y%W")
+    lot_ids = data["lot_id"].astype("string")
+    has_underscore = lot_ids.str.contains("_", na=False)
+    lot_with_underscore = (
+      lot_ids.str.split("_", n=1).str[1].astype("string").str.split(".").str[0]
+    )
+    lot_without_underscore = lot_ids.str.split(".").str[0]
+    data["lot"] = np.where(has_underscore, lot_with_underscore, lot_without_underscore)
+    data["work_week_raw"] = data["event_time"].dt.strftime("%Y%W")
+    latest_week = data.groupby("lot")["work_week_raw"].max().rename("work_week")
+    data = data.merge(latest_week, on="lot", how="left")
+    if "facility_id" in data:
+      data.rename(columns={"facility_id": "facility"}, inplace=True)
     return data
 
 
