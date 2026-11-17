@@ -6,12 +6,28 @@ from collections.abc import Mapping
 import numpy as np
 import pandas as pd
 
-from .contracts import CalculationResult
+from .contracts import ArtifactSpec, CalculationResult, FilterSpec, ReportManifest
 from .yms04 import add_dynamic_yields as add_generic_dynamic_yields
 
 EXCLUDED_TEST_PROGRAM_PATTERN = r"QK|Screen|ENG|CORR|Calibration|HTOL"
 DEFAULT_SUMMARY_KEYS = ("test_stage", "product_family", "process_step")
 REQUEST_FILTERS = ("test_program", "facility", "tester_id", "handler_id", "card_id", "lot")
+
+MANIFEST = ReportManifest(
+    name="yms03",
+    contract_version="1.0.0",
+    processed_artifact=ArtifactSpec("yms03_processed_unit", "utd"),
+    commitment_kind="utd_commit",
+    filters=(
+        FilterSpec("start_date", "datetime", required_with=("end_date",)),
+        FilterSpec("end_date", "datetime", required_with=("start_date",)),
+        FilterSpec("hbins", "number", multiple=True),
+        FilterSpec("sbins", "number", multiple=True),
+        *(FilterSpec(key, "string", multiple=True) for key in REQUEST_FILTERS),
+        FilterSpec("group_by_columns", "string", multiple=True),
+    ),
+    group_by_fields=("work_week", *REQUEST_FILTERS),
+)
 
 
 def process_unit_test_data(dataframe: pd.DataFrame) -> pd.DataFrame:

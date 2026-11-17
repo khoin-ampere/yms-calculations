@@ -6,20 +6,11 @@ from collections.abc import Mapping
 import numpy as np
 import pandas as pd
 
-from .contracts import CalculationResult
+from .contracts import ArtifactSpec, CalculationResult, ColumnSpec, FilterSpec, ReportManifest
 
 
 EXCLUDED_TEST_PROGRAM_PATTERN = r"QK|Screen|ENG|CORR|Calibration|HTOL"
-FILTER_COLUMNS = (
-    "test_program",
-    "facility",
-    "handler_id",
-    "test_temp",
-    "hbin",
-    "lot",
-    "process_step",
-)
-GROUP_BY_COLUMNS = (
+YMS06_GROUP_BY_FIELDS = (
     "work_week",
     "test_program",
     "facility",
@@ -27,6 +18,7 @@ GROUP_BY_COLUMNS = (
     "test_temp",
     "lot",
 )
+YMS06_OPTIONAL_COLUMNS = ("ttg_volume", "ttb_volume", "no_lots")
 _REQUIRED_COLUMNS = {
     "die_id",
     "wafer_no",
@@ -39,6 +31,65 @@ _REQUIRED_COLUMNS = {
     "product_family",
     "process_step",
 }
+
+MANIFEST = ReportManifest(
+    name="yms06",
+    contract_version="1.0.0",
+    processed_artifact=ArtifactSpec("processed_die_yms06", "ws"),
+    commitment_kind="ws_commit",
+    filters=(
+        FilterSpec("start_date", "datetime", required_with=("end_date",)),
+        FilterSpec("end_date", "datetime", required_with=("start_date",)),
+        *(
+            FilterSpec(key, "string", multiple=True, data_filter=True)
+            for key in ("test_program", "facility", "handler_id", "lot", "process_step")
+        ),
+        FilterSpec("test_temp", "number", multiple=True, data_filter=True),
+        FilterSpec("hbin", "number", multiple=True, data_filter=True),
+        FilterSpec(
+            "group_by_columns",
+            "string",
+            multiple=True,
+            allowed_values=YMS06_GROUP_BY_FIELDS,
+        ),
+        FilterSpec(
+            "optional_columns",
+            "string",
+            multiple=True,
+            calculation_relevant=False,
+            allowed_values=YMS06_OPTIONAL_COLUMNS,
+        ),
+        FilterSpec("process_step_combination", "string", multiple=True, minimum_items=2),
+    ),
+    group_by_fields=YMS06_GROUP_BY_FIELDS,
+    group_by_columns=(
+        ColumnSpec("work_week", "Work Week", "number"),
+        ColumnSpec("test_program", "Test Program", "text"),
+        ColumnSpec("facility", "Facility", "text"),
+        ColumnSpec("handler_id", "Handler Id", "text"),
+        ColumnSpec("test_temp", "Test Temp", "number"),
+        ColumnSpec("lot", "Lot", "text"),
+    ),
+    columns=(
+        ColumnSpec("product_family", "Product", "text"),
+        ColumnSpec("process_step", "Process Step", "text"),
+        ColumnSpec("volume", "#Test records", "number"),
+        ColumnSpec("no_wafers", "#Wafers", "number"),
+        ColumnSpec("test_time", "TT (s)", "number", color_type="test_time", color_reference="test_time_delta"),
+        ColumnSpec("test_time_commit", "Commit", "number"),
+        ColumnSpec("delta", "Delta", "number"),
+        ColumnSpec("test_time_delta", "Test Time Delta", "number", display_by_default=False),
+        ColumnSpec("ttg", "TTG (s)", "number"),
+        ColumnSpec("ttb", "TTB (s)", "number"),
+        ColumnSpec("ttg_volume", "#TTG test records", "number"),
+        ColumnSpec("ttb_volume", "#TTB test records", "number"),
+        ColumnSpec("no_lots", "#Lots", "number"),
+    ),
+    optional_columns=YMS06_OPTIONAL_COLUMNS,
+)
+
+FILTER_COLUMNS = MANIFEST.data_filter_keys
+GROUP_BY_COLUMNS = MANIFEST.group_by_fields
 
 
 def process_raw_die_data(dataframe: pd.DataFrame) -> pd.DataFrame:
@@ -81,7 +132,7 @@ def filter_options(dataframe: pd.DataFrame) -> dict[str, object]:
         "test_temp": sorted(dataframe["test_temp"].dropna().unique().tolist()),
         "lot": sorted(dataframe["lot"].dropna().unique().tolist()),
         "process_step": sorted(dataframe["process_step"].dropna().unique().tolist()),
-        "optional_columns": ["ttg_volume", "ttb_volume", "no_lots"],
+        "optional_columns": list(MANIFEST.optional_columns),
     }
 
 

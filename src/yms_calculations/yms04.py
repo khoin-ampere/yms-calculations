@@ -6,7 +6,7 @@ from collections.abc import Mapping
 import numpy as np
 import pandas as pd
 
-from .contracts import CalculationResult
+from .contracts import ArtifactSpec, CalculationResult, FilterSpec, ReportManifest
 
 EXCLUDED_TEST_PROGRAM_PATTERN = r"QK|Screen|ENG|CORR|Calibration|HTOL"
 DEFAULT_SUMMARY_KEYS = ("product_family", "process_step", "test_temp")
@@ -17,6 +17,19 @@ SUMMARY_REQUIRED_COLUMNS = {
 ALL_TEST_REQUIRED_COLUMNS = {
     "product_family", "process_step", "test_temp", "retest", "die_run_time", "test_result",
 }
+
+MANIFEST = ReportManifest(
+    name="yms04",
+    contract_version="1.0.0",
+    processed_artifact=ArtifactSpec("yms04_processed_die", "ws"),
+    commitment_kind="ws_commit",
+    filters=(
+        FilterSpec("start_date", "datetime", required_with=("end_date",)),
+        FilterSpec("end_date", "datetime", required_with=("start_date",)),
+        FilterSpec("hbins", "number", multiple=True),
+        FilterSpec("sbins", "number", multiple=True),
+    ),
+)
 
 
 def process_raw_die_data(dataframe: pd.DataFrame) -> pd.DataFrame:

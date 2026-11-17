@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from yms_calculations import get_report
+from yms_calculations import ReportValidationError, get_report
 from yms_calculations import registry, yms03, yms04, yms05, yms06
 
 
@@ -15,6 +15,87 @@ def test_registry_exposes_supported_reports() -> None:
     assert get_report("yms04").calculate is yms04.calculate
     with pytest.raises(ValueError, match="Unknown YMS report"):
         get_report("unknown")
+
+
+def test_registry_exposes_data_owned_manifests_without_changing_calculators() -> None:
+    expected_artifacts = {
+        "yms03": "yms03_processed_unit",
+        "yms04": "yms04_processed_die",
+        "yms05": "yms05_processed_die",
+        "yms06": "processed_die_yms06",
+    }
+    for report_name in ("yms03", "yms04", "yms05", "yms06"):
+        report = get_report(report_name)
+        assert report.manifest.name == report_name
+        assert report.manifest.contract_version == "1.0.0"
+        assert report.manifest.processed_artifact.logical_name == expected_artifacts[report_name]
+        assert report.calculate is report.module.calculate
+
+
+def test_registry_normalizes_filters_and_excludes_display_only_fields_from_cache_data() -> None:
+    report = get_report("yms06")
+    filters = report.normalize_filters(
+        {
+            "hbin": [1, 2],
+            "optional_columns": ["no_lots"],
+            "process_step_combination": ["CP1", "CP2"],
+        }
+    )
+
+    assert filters["hbin"] == [1, 2]
+    assert report.calculation_filter_data(filters) == {
+        "hbin": [1, 2],
+        "process_step_combination": ["CP1", "CP2"],
+    }
+
+
+def test_registry_filter_contract_rejects_unknown_and_unpaired_dates() -> None:
+    report = get_report("yms03")
+    with pytest.raises(ReportValidationError, match="Unsupported filters"):
+        report.normalize_filters({"unknown": ["value"]})
+    with pytest.raises(ReportValidationError, match="requires"):
+        report.normalize_filters({"start_date": "2026-10-01T00:00:00Z"})
+
+
+def test_yms06_manifest_owns_filter_grouping_and_column_metadata() -> None:
+    manifest = get_report("yms06").manifest
+
+    assert manifest.processed_artifact.logical_name == "processed_die_yms06"
+    assert manifest.data_filter_keys == (
+        "test_program",
+        "facility",
+        "handler_id",
+        "lot",
+        "process_step",
+        "test_temp",
+        "hbin",
+    )
+    assert manifest.group_by_fields == (
+        "work_week",
+        "test_program",
+        "facility",
+        "handler_id",
+        "test_temp",
+        "lot",
+    )
+    assert manifest.group_by_column_map["test_temp"].format == "number"
+    assert manifest.optional_columns == ("ttg_volume", "ttb_volume", "no_lots")
+
+    test_time = next(column for column in manifest.columns if column.key == "test_time")
+    assert test_time.header == "TT (s)"
+    assert test_time.color_type == "test_time"
+    assert test_time.color_reference == "test_time_delta"
+
+
+def test_yms06_manifest_validates_selectable_fields_and_step_combination() -> None:
+    report = get_report("yms06")
+
+    with pytest.raises(ReportValidationError, match="Unsupported group_by_columns"):
+        report.normalize_filters({"group_by_columns": ["unknown"]})
+    with pytest.raises(ReportValidationError, match="Unsupported optional_columns"):
+        report.normalize_filters({"optional_columns": ["unknown"]})
+    with pytest.raises(ReportValidationError, match="requires at least 2"):
+        report.normalize_filters({"process_step_combination": ["CP1"]})
 
 
 def test_package_has_no_web_or_runtime_dependencies() -> None:

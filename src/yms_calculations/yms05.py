@@ -5,10 +5,24 @@ from collections.abc import Mapping
 
 import pandas as pd
 
-from .contracts import CalculationResult
+from .contracts import ArtifactSpec, CalculationResult, FilterSpec, ReportManifest
 from . import yms04
 
 DEFAULT_SUMMARY_KEYS = ("product_family", "process_step", "test_temp", "work_week")
+
+MANIFEST = ReportManifest(
+    name="yms05",
+    contract_version="1.0.0",
+    processed_artifact=ArtifactSpec("yms05_processed_die", "ws"),
+    commitment_kind="ws_commit",
+    filters=(
+        FilterSpec("start_date", "datetime", required_with=("end_date",)),
+        FilterSpec("end_date", "datetime", required_with=("start_date",)),
+        FilterSpec("hbins", "number", multiple=True),
+        FilterSpec("sbins", "number", multiple=True),
+    ),
+    group_by_fields=("work_week",),
+)
 
 
 def add_work_week(dataframe: pd.DataFrame) -> pd.DataFrame:
