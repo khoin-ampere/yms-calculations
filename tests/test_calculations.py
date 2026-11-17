@@ -127,6 +127,41 @@ def test_yms04_calculates_semantic_result(die_data, die_commits) -> None:
     assert result.frame.iloc[0]["HBIN1"] == pytest.approx(0.25)
 
 
+def test_yms04_manifest_preserves_portal_column_contract() -> None:
+    assert [
+        (
+            column.key,
+            column.header,
+            column.format,
+            column.display_by_default,
+            column.color_type,
+            column.color_reference,
+        )
+        for column in yms04.MANIFEST.columns
+    ] == [
+        ("product_family", "Product", "text", True, None, None),
+        ("process_step", "Process", "text", True, None, None),
+        ("test_temp", "Temp (C)", "number", True, None, None),
+        ("volume", "Volume", "number", True, None, None),
+        ("no_wafers", "#wafers", "number", True, None, None),
+        ("no_lots", "#lots", "number", True, None, None),
+        ("yield", "Yield", "percentage", True, "yield", "yield_delta"),
+        ("yield_commit", "Yield commit", "percentage", True, None, None),
+        ("delta", "Delta", "percentage", True, None, None),
+        ("d0", "D0", "number", True, None, None),
+        ("full_core_yield", "Full Core Yield", "percentage", True, "yield", "fc_yield_delta"),
+        ("commit_fc_yield", "FC Yield commit", "percentage", True, None, None),
+        ("first_pass_yield", "1st Pass Yield", "percentage", True, None, None),
+        ("retest_rate", "Retest%", "percentage", True, None, None),
+        ("test_time", "TT (s)", "number", True, "test_time", "test_time_delta"),
+        ("test_time_commit", "TT commit", "number", True, None, None),
+        ("ttg", "TTG (s)", "number", True, None, None),
+        ("yield_delta", "Yield Delta", "percentage", False, None, None),
+        ("fc_yield_delta", "Full Core Yield Delta", "percentage", False, None, None),
+        ("test_time_delta", "Test Time Delta", "number", False, None, None),
+    ]
+
+
 def test_yms05_assigns_a_lot_to_its_latest_work_week(die_data, die_commits) -> None:
     processed = yms05.process_raw_die_data(die_data)
     assert processed[processed["wafer_lot_id"].eq("LOT1")]["work_week"].nunique() == 1

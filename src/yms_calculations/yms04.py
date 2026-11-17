@@ -6,7 +6,7 @@ from collections.abc import Mapping
 import numpy as np
 import pandas as pd
 
-from .contracts import ArtifactSpec, CalculationResult, FilterSpec, ReportManifest
+from .contracts import ArtifactSpec, CalculationResult, ColumnSpec, FilterSpec, ReportManifest
 
 EXCLUDED_TEST_PROGRAM_PATTERN = r"QK|Screen|ENG|CORR|Calibration|HTOL"
 DEFAULT_SUMMARY_KEYS = ("product_family", "process_step", "test_temp")
@@ -28,6 +28,56 @@ MANIFEST = ReportManifest(
         FilterSpec("end_date", "datetime", required_with=("start_date",)),
         FilterSpec("hbins", "number", multiple=True),
         FilterSpec("sbins", "number", multiple=True),
+    ),
+    columns=(
+        ColumnSpec("product_family", "Product", "text"),
+        ColumnSpec("process_step", "Process", "text"),
+        ColumnSpec("test_temp", "Temp (C)", "number"),
+        ColumnSpec("volume", "Volume", "number"),
+        ColumnSpec("no_wafers", "#wafers", "number"),
+        ColumnSpec("no_lots", "#lots", "number"),
+        ColumnSpec(
+            "yield",
+            "Yield",
+            "percentage",
+            color_type="yield",
+            color_reference="yield_delta",
+        ),
+        ColumnSpec("yield_commit", "Yield commit", "percentage"),
+        ColumnSpec("delta", "Delta", "percentage"),
+        ColumnSpec("d0", "D0", "number"),
+        ColumnSpec(
+            "full_core_yield",
+            "Full Core Yield",
+            "percentage",
+            color_type="yield",
+            color_reference="fc_yield_delta",
+        ),
+        ColumnSpec("commit_fc_yield", "FC Yield commit", "percentage"),
+        ColumnSpec("first_pass_yield", "1st Pass Yield", "percentage"),
+        ColumnSpec("retest_rate", "Retest%", "percentage"),
+        ColumnSpec(
+            "test_time",
+            "TT (s)",
+            "number",
+            color_type="test_time",
+            color_reference="test_time_delta",
+        ),
+        ColumnSpec("test_time_commit", "TT commit", "number"),
+        ColumnSpec("ttg", "TTG (s)", "number"),
+        ColumnSpec("yield_delta", "Yield Delta", "percentage", display_by_default=False),
+        ColumnSpec(
+            "fc_yield_delta",
+            "Full Core Yield Delta",
+            "percentage",
+            display_by_default=False,
+        ),
+        ColumnSpec(
+            "test_time_delta",
+            "Test Time Delta",
+            "number",
+            display_by_default=False,
+        ),
     ),
 )
 
