@@ -6,7 +6,7 @@ from collections.abc import Mapping
 import numpy as np
 import pandas as pd
 
-from .contracts import ArtifactSpec, CalculationResult, FilterSpec, ReportManifest
+from .contracts import ArtifactSpec, CalculationResult, ColumnSpec, FilterSpec, ReportManifest
 from .yms04 import add_dynamic_yields as add_generic_dynamic_yields
 
 EXCLUDED_TEST_PROGRAM_PATTERN = r"QK|Screen|ENG|CORR|Calibration|HTOL"
@@ -27,6 +27,62 @@ MANIFEST = ReportManifest(
         FilterSpec("group_by_columns", "string", multiple=True),
     ),
     group_by_fields=("work_week", *REQUEST_FILTERS),
+    group_by_columns=(
+        ColumnSpec("work_week", "Work Week", "number"),
+        ColumnSpec("test_program", "Test Program", "text"),
+        ColumnSpec("facility", "Facility", "text"),
+        ColumnSpec("tester_id", "Tester Id", "text"),
+        ColumnSpec("handler_id", "Handler Id", "text"),
+        ColumnSpec("card_id", "Card Id", "text"),
+        ColumnSpec("lot", "Lot", "text"),
+    ),
+    columns=(
+        ColumnSpec("product_family", "Product", "text"),
+        ColumnSpec("process_step", "Process Step", "text"),
+        ColumnSpec("volume", "Volume", "number"),
+        ColumnSpec("no_lots", "#Lots", "number"),
+        ColumnSpec(
+            "yield",
+            "Yield",
+            "percentage",
+            color_type="yield",
+            color_reference="yield_delta",
+        ),
+        ColumnSpec("yield_commit", "Yield Commit", "percentage"),
+        ColumnSpec("delta", "Delta", "percentage"),
+        ColumnSpec("yield_delta", "Yield Delta", "percentage", display_by_default=False),
+        ColumnSpec(
+            "top_bin_yield",
+            "Top Bin Yield",
+            "percentage",
+            color_type="yield",
+            color_reference="top_bin_yield_delta",
+        ),
+        ColumnSpec("top_bin_yield_commit", "Top Bin Yield Commit", "percentage"),
+        ColumnSpec("top_bin_delta", "Top Bin Delta", "percentage"),
+        ColumnSpec(
+            "top_bin_yield_delta",
+            "Top Bin Yield Delta",
+            "percentage",
+            display_by_default=False,
+        ),
+        ColumnSpec("retest_rate", "Retest%", "percentage"),
+        ColumnSpec(
+            "test_time",
+            "TT (s)",
+            "number",
+            color_type="test_time",
+            color_reference="test_time_delta",
+        ),
+        ColumnSpec("test_time_commit", "TT Commit", "number"),
+        ColumnSpec(
+            "test_time_delta",
+            "Test Time Delta",
+            "number",
+            display_by_default=False,
+        ),
+        ColumnSpec("ttg", "TTG (s)", "number"),
+    ),
 )
 
 

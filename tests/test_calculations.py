@@ -236,6 +236,49 @@ def test_yms03_parses_lot_filters_by_lot_and_uses_latest_week() -> None:
     assert result.frame.loc[0, "volume"] == 2
 
 
+def test_yms03_manifest_preserves_portal_column_contract() -> None:
+    manifest = yms03.MANIFEST
+
+    assert [column.key for column in manifest.group_by_columns] == [
+        "work_week",
+        "test_program",
+        "facility",
+        "tester_id",
+        "handler_id",
+        "card_id",
+        "lot",
+    ]
+    assert [
+        (
+            column.key,
+            column.header,
+            column.format,
+            column.display_by_default,
+            column.color_type,
+            column.color_reference,
+        )
+        for column in manifest.columns
+    ] == [
+        ("product_family", "Product", "text", True, None, None),
+        ("process_step", "Process Step", "text", True, None, None),
+        ("volume", "Volume", "number", True, None, None),
+        ("no_lots", "#Lots", "number", True, None, None),
+        ("yield", "Yield", "percentage", True, "yield", "yield_delta"),
+        ("yield_commit", "Yield Commit", "percentage", True, None, None),
+        ("delta", "Delta", "percentage", True, None, None),
+        ("yield_delta", "Yield Delta", "percentage", False, None, None),
+        ("top_bin_yield", "Top Bin Yield", "percentage", True, "yield", "top_bin_yield_delta"),
+        ("top_bin_yield_commit", "Top Bin Yield Commit", "percentage", True, None, None),
+        ("top_bin_delta", "Top Bin Delta", "percentage", True, None, None),
+        ("top_bin_yield_delta", "Top Bin Yield Delta", "percentage", False, None, None),
+        ("retest_rate", "Retest%", "percentage", True, None, None),
+        ("test_time", "TT (s)", "number", True, "test_time", "test_time_delta"),
+        ("test_time_commit", "TT Commit", "number", True, None, None),
+        ("test_time_delta", "Test Time Delta", "number", False, None, None),
+        ("ttg", "TTG (s)", "number", True, None, None),
+    ]
+
+
 def test_yms06_calculates_test_time_for_filtered_records(die_data, die_commits) -> None:
     processed = yms06.process_raw_die_data(die_data.assign(facility_id="F1", handler_id="H1"))
     result = yms06.calculate(
